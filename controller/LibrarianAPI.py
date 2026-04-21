@@ -52,7 +52,7 @@ def get_borrowed_by_return_date(request: Request , return_date : str , page : in
 
 @router.post("/borrowed")
 def add_borrowed(request:Request):
-    db = get_db()
+    db = next(get_db())
     Book = db.query(Books.Book).filter(Books.Book.id == request.state.bookId).first()
     if not Book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -80,7 +80,7 @@ def update_borrowed(request: Request , borrowed: Borrowed.BorrowedUpdate):
 
 @router.put("/return_borrowed/{bookId}")
 def return_borrowed(request: Request , bookId : int):
-    db = get_db()
+    db = next(get_db())
     Book = db.query(Books.Book).filter(Books.Book.id == bookId).first()
     if not Book:
         raise HTTPException(status_code=404, detail="Book not found")
@@ -96,3 +96,17 @@ def return_borrowed(request: Request , bookId : int):
     db.refresh(Book)
     db.refresh(borrowed)
     return Book
+
+
+import pydantic
+
+class PDFRequest(pydantic.BaseModel):
+    title: str
+    borrow_date: str
+    return_date: str
+
+@router.post("/generate_pdf")
+def generate_pdf(request: Request, pdf_req: PDFRequest):
+    data = request.state.user.dict()
+    data.update(pdf_req.dict())
+    return LibrarianService.generate_pdf(data)

@@ -1,4 +1,5 @@
 import fastapi
+import pydantic
 from fastapi import APIRouter , Depends , HTTPException , Request
 import service.BooksService as BooksService
 import domain.Books as Book
@@ -40,3 +41,14 @@ def update_book(request: Request , book: Book.BookUpdate):
 @router.delete("/books")
 def delete_book(request: Request , book: Book.BookDelete):
     return BooksService.delete_book(book)
+
+
+
+class BookBriefRequest(pydantic.BaseModel):
+    title: str
+    author: str
+    category: str
+
+@router.post("/books/generate-brief")
+def generate_book_brief(request: BookBriefRequest):
+    return BooksService.generate_book_brief(request.title , request.author , request.category)

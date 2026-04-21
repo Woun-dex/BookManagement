@@ -22,6 +22,6 @@ def loginLibrarian(user: User.UserLogin):
     return AuthService.loginLibrarian(user)
 
 @router.get("/current_user")
-def current_user(token: str = Depends(AuthService.get_current_user)):
-    return token
+def current_user(user = Depends(AuthService.get_current_user)):
+    return user
 
