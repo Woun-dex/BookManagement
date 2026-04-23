@@ -1,8 +1,12 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+import os
+from dotenv import load_dotenv
 
-POSTGRES_URL = "postgresql://postgres:walid@localhost:5432/book_management"
+load_dotenv()
+
+POSTGRES_URL = os.getenv("POSTGRES_URL")
 
 try:
     import psycopg2
@@ -48,4 +52,7 @@ def get_db():
         yield db
     finally:
         db.close()
-
+
+
+
+# Removed automatic upgrade to avoid recursion during CLI migration generation
