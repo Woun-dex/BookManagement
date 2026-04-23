@@ -1,4 +1,5 @@
 import domain.user as User
+import domain.UserProfile as UserProfile
 import service.auth.authHelper as AuthHelper
 from fastapi.security import OAuth2PasswordBearer , OAuth2PasswordRequestForm
 from fastapi import Depends, HTTPException, Request
@@ -11,6 +12,12 @@ def register(user: User.UserCreate) -> User.User:
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    
+    # Create an empty profile for the new user
+    new_profile = UserProfile.UserProfile(user_id=new_user.id)
+    db.add(new_profile)
+    db.commit()
+    
     return new_user
 
 def login(user: User.UserLogin):
