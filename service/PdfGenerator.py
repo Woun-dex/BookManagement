@@ -60,9 +60,8 @@ def generate_pdf(data):
     </html>
     """
 
-    # Generate the PDF
-    HTML(string=html_template).write_pdf(f"{UserName}_{BookName}.pdf")
-    print("PDF generated successfully: Library_Slip.pdf")
+    # Generate and return the PDF bytes
+    return HTML(string=html_template).write_pdf()
 
         
 

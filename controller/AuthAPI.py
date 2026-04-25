@@ -26,3 +26,7 @@ def loginLibrarian(user: User.UserLogin):
 def current_user(user = Depends(AuthService.get_current_user)):
     return user
 
+@router.put("/update-user")
+def update_user(user_update: User.UserUpdate, user = Depends(AuthService.get_current_user)):
+    return AuthService.update_user(user["id"], user_update)
+

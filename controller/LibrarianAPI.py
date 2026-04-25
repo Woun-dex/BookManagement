@@ -11,13 +11,13 @@ router = APIRouter()
 
 @router.get("/borrowed")
 def get_all_borrowed(request: Request , page : int = 1 , limit : int = 10 , sort_by : str = "id" , sort_order : str = "asc"):
-    if request.state.user.role != "librarian":
+    if request.state.user.get("role") != "librarian":
         raise HTTPException(status_code=403, detail="User is not a librarian")
     return LibrarianService.get_all_borrowed(page , limit , sort_by , sort_order)
 
 @router.get("/borrowed/{id}")
 def get_borrowed(request: Request , id : int):
-    if request.state.user.role != "librarian":
+    if request.state.user.get("role") != "librarian":
         raise HTTPException(status_code=403, detail="User is not a librarian")
     return LibrarianService.get_borrowed(id)
 
@@ -35,47 +35,86 @@ def get_borrowed_by_librarian(request: Request , librarian_id : int , page : int
 
 @router.get("/borrowed/book/{book_id}")
 def get_borrowed_by_book(request: Request , book_id : int , page : int = 1 , limit : int = 10 , sort_by : str = "id" , sort_order : str = "asc"):
-    if request.state.user.role != "librarian":
+    if request.state.user.get("role") != "librarian":
         raise HTTPException(status_code=403, detail="User is not a librarian")
     return LibrarianService.get_borrowed_by_book(book_id , page , limit , sort_by , sort_order)
 
 @router.get("/borrowed/borrow_date/{borrow_date}")
 def get_borrowed_by_borrow_date(request: Request , borrow_date : str , page : int = 1 , limit : int = 10 , sort_by : str = "id" , sort_order : str = "asc"):
-    if request.state.user.role != "librarian":
+    if request.state.user.get("role") != "librarian":
         raise HTTPException(status_code=403, detail="User is not a librarian")
     return LibrarianService.get_borrowed_by_borrow_date(borrow_date , page , limit , sort_by , sort_order)
 
 @router.get("/borrowed/return_date/{return_date}")
 def get_borrowed_by_return_date(request: Request , return_date : str , page : int = 1 , limit : int = 10 , sort_by : str = "id" , sort_order : str = "asc"):
-    if request.state.user.role != "librarian":
+    if request.state.user.get("role") != "librarian":
         raise HTTPException(status_code=403, detail="User is not a librarian")
     return LibrarianService.get_borrowed_by_return_date(return_date , page , limit , sort_by , sort_order)
 
 class AddBorrowedRequest(pydantic.BaseModel):
     bookId: int
     readerId: int
+    returnDate: str
 
 @router.post("/borrowed")
 def add_borrowed(request: Request, payload: AddBorrowedRequest):
     db = next(get_db())
-    Book = db.query(Books.Book).filter(Books.Book.id == payload.bookId).first()
-    if not Book:
+    book = db.query(Books.Book).filter(Books.Book.id == payload.bookId).first()
+    if not book:
         raise HTTPException(status_code=404, detail="Book not found")
-    if Book.stock == 0:
-        raise HTTPException(status_code=400, detail="Book is out of stock")
-    Book.stock -= 1
+    
     borrowed = Borrowed.Borrowed(
         book_id = payload.bookId,
         reader_id = payload.readerId,
-        librarian_id = request.state.user.id,
-        borrow_date = datetime.now(),
-        return_date = datetime.now() + timedelta(days=14),
-        state = "borrowed"
+        librarian_id = request.state.user.get("id"),
+        borrow_date = datetime.now().strftime("%Y-%m-%d"),
+        return_date = datetime.strptime(payload.returnDate, "%Y-%m-%d"),
+        state = "pending"
     )
-    db.merge(Book)
+    db.add(borrowed)
     db.commit()
-    db.refresh(Book)
-    return Book
+    db.refresh(borrowed)
+    return borrowed
+
+@router.put("/approve_borrowed/{id}")
+def approve_borrowed(request: Request, id: int):
+    if request.state.user.get("role") != "librarian":
+        raise HTTPException(status_code=403, detail="User is not a librarian")
+    db = next(get_db())
+    borrowed = db.query(Borrowed.Borrowed).filter(Borrowed.Borrowed.id == id).first()
+    if not borrowed:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    book = db.query(Books.Book).filter(Books.Book.id == borrowed.book_id).first()
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    if book.stock <= 0:
+        raise HTTPException(status_code=400, detail="Book is out of stock")
+    
+    book.stock -= 1
+    borrowed.state = "borrowed"
+    borrowed.borrow_date = datetime.now().strftime("%Y-%m-%d")
+    borrowed.return_date = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+    
+    db.merge(book)
+    db.merge(borrowed)
+    db.commit()
+    return borrowed
+
+@router.put("/reject_borrowed/{id}")
+def reject_borrowed(request: Request, id: int):
+    if request.state.user.get("role") != "librarian":
+        raise HTTPException(status_code=403, detail="User is not a librarian")
+    db = next(get_db())
+    borrowed = db.query(Borrowed.Borrowed).filter(Borrowed.Borrowed.id == id).first()
+    if not borrowed:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    borrowed.state = "rejected"
+    db.merge(borrowed)
+    db.commit()
+    return borrowed
 
 @router.put("/borrowed")
 def update_borrowed(request: Request , borrowed: Borrowed.BorrowedUpdate):
@@ -118,8 +157,11 @@ class PDFRequest(pydantic.BaseModel):
     borrow_date: str
     return_date: str
 
+from fastapi import Response
+
 @router.post("/generate_pdf")
 def generate_pdf(request: Request, pdf_req: PDFRequest):
-    data = request.state.user.dict()
+    data = request.state.user.copy()
     data.update(pdf_req.dict())
-    return LibrarianService.generate_pdf(data)
+    pdf_bytes = LibrarianService.generate_pdf(data)
+    return Response(content=pdf_bytes, media_type="application/pdf")

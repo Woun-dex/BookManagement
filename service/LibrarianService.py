@@ -1,6 +1,7 @@
 import domain.Borrowed as Borrowed
 import service.PdfGenerator as PdfGenerator
 import domain.Books as Books
+import domain.user as User
 from config.dbConfig import get_db
 
 def get_all_borrowed(page : int , limit : int , sort_by : str , sort_order : str):
@@ -35,14 +36,15 @@ def get_borrowed_by_librarian(librarian_id : int , page : int , limit : int , so
     col = getattr(Borrowed.Borrowed, sort_by)
     order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
 
-    results = db.query(Borrowed.Borrowed, Books.Book).join(
+    results = db.query(Borrowed.Borrowed, Books.Book, User.User).join(
         Books.Book, Borrowed.Borrowed.book_id == Books.Book.id
-    ).filter(Borrowed.Borrowed.librarian_id == librarian_id).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+    ).join(User.User, Borrowed.Borrowed.reader_id == User.User.id).filter(Borrowed.Borrowed.librarian_id == librarian_id).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
     
     formatted_results = []
-    for borrowed, book in results:
+    for borrowed, book, user in results:
         borrowed_dict = {k: v for k, v in borrowed.__dict__.items() if not k.startswith('_')}
         borrowed_dict["book"] = book
+        borrowed_dict["user"] = user.full_name
         formatted_results.append(borrowed_dict)
         
     return formatted_results
@@ -91,7 +93,7 @@ def delete_borrowed(borrowed: Borrowed.BorrowedDelete):
 
 def get_all_users(name : str):
     db = next(get_db())
-    return db.query(User.User).filter(User.User.name.like(f"%{name}%")).all()
+    return db.query(User.User).filter(User.User.full_name.like(f"%{name}%")).all()
 
 
 def generate_pdf(data):

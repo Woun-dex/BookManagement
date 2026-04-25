@@ -70,3 +70,19 @@ def loginLibrarian(user: User.UserLogin):
 def get_current_user(request: Request):
     user = request.state.user
     return user
+
+def update_user(user_id: int, user_update: User.UserUpdate):
+    db = next(get_db())
+    existing_user = db.query(User.User).filter(User.User.id == user_id).first()
+    if not existing_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    existing_user.full_name = user_update.full_name
+    existing_user.email = user_update.email
+    # Update password only if provided
+    if user_update.password:
+        existing_user.password = AuthHelper.hash_password(user_update.password)
+        
+    db.commit()
+    db.refresh(existing_user)
+    return existing_user
