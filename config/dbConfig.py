@@ -42,7 +42,13 @@ try:
 except Exception as e:
     print(f"Failed to check or create database: {e}")
 
-engine = create_engine(POSTGRES_URL)
+engine = create_engine(
+    POSTGRES_URL,
+    pool_size=20,
+    max_overflow=30,
+    pool_pre_ping=True,
+    pool_recycle=1800
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -53,6 +59,16 @@ def get_db():
     finally:
         db.close()
 
+from contextlib import contextmanager
+
+@contextmanager
+def get_db_session():
+    """Context manager that guarantees session cleanup. Use: with get_db_session() as db:"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # Removed automatic upgrade to avoid recursion during CLI migration generation
