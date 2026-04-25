@@ -1,4 +1,5 @@
 import fastapi
+from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -14,6 +15,14 @@ from service.auth.authMiddelware import JWTMiddleware
 app = fastapi.FastAPI()
 
 app.add_middleware(JWTMiddleware)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(auth_app)
 app.include_router(books_app)
 app.include_router(reader_app)

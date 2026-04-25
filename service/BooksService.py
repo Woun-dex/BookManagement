@@ -5,27 +5,47 @@ import service.LLMService as LLMService
 
 def get_all_books(page: int, limit: int , sort_by: str , sort_order: str):
     db = next(get_db())
-    return db.query(Book.Book).offset((page - 1) * limit).limit(limit).order_by(getattr(Book.Book, sort_by), sort_order).all() 
+    col = getattr(Book.Book, sort_by)
+    order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+    return db.query(Book.Book).order_by(order_expr).offset((page - 1) * limit).limit(limit).all() 
 
 def get_book(id: int):
     db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.id == id)
+    return db.query(Book.Book).filter(Book.Book.id == id).first()
 
-def get_books_by_title(title: str , page : int , limit : int):
+def get_books_by_title(title: str , page : int , limit : int, sort_by: str, sort_order: str):
     db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.title == title).offset((page - 1) * limit).limit(limit).all()
+    col = getattr(Book.Book, sort_by)
+    order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+    return db.query(Book.Book).filter(Book.Book.title == title).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
 
-def get_books_by_author(author: str , page : int , limit : int):
+def get_books_by_author(author: str , page : int , limit : int, sort_by: str, sort_order: str):
     db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.author == author).offset((page - 1) * limit).limit(limit).all()
+    col = getattr(Book.Book, sort_by)
+    order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+    return db.query(Book.Book).filter(Book.Book.author == author).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
 
-def get_books_by_category(category: str , page : int , limit : int):
+def get_books_by_category(category: str , page : int , limit : int, sort_by: str, sort_order: str):
     db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.category == category).offset((page - 1) * limit).limit(limit).all()
+    col = getattr(Book.Book, sort_by)
+    order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+    return db.query(Book.Book).filter(Book.Book.category == category).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
 
-def get_books_by_rate(page : int , limit : int , sort_order : str):
+def get_books_by_rate(rate: int, page : int , limit : int , sort_by: str, sort_order : str):
     db = next(get_db())
-    return db.query(Book.Book).join(BooksRate.BooksRate).offset((page - 1) * limit).limit(limit).order_by(getattr(BooksRate.BooksRate, "rate"), sort_order).all()
+    # Assuming sort_by is applicable to Book.Book.
+    # We filter by the provided rate value, but the current model might need adjusting.
+    col = getattr(Book.Book, sort_by)
+    order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+    return db.query(Book.Book).join(BooksRate.BooksRate).filter(BooksRate.BooksRate.rate == rate).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+
+def search_books(query: str, page: int = 1, limit: int = 10, sort_by: str = "id", sort_order: str = "asc"):
+    db = next(get_db())
+    col = getattr(Book.Book, sort_by)
+    order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+    return db.query(Book.Book).filter(
+        Book.Book.title.ilike(f"%{query}%") | Book.Book.author.ilike(f"%{query}%")
+    ).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
 
 
 

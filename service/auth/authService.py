@@ -4,6 +4,8 @@ import service.auth.authHelper as AuthHelper
 from fastapi.security import OAuth2PasswordBearer , OAuth2PasswordRequestForm
 from fastapi import Depends, HTTPException, Request
 from config.dbConfig import get_db
+from fastapi.responses import JSONResponse
+
 
 def register(user: User.UserCreate) -> User.User:
     hashed_password = AuthHelper.hash_password(user.password)
@@ -35,15 +37,20 @@ def login(user: User.UserLogin):
         role=found_user.role
     )
     token = AuthHelper.create_token(token_data)
-    return token
+    token_str = token.access_token
+    response = JSONResponse(content={"message": "Login successful", "token": token_str})
+    response.set_cookie(key="token", value=token_str, httponly=False, samesite="lax")
+    return response
 
 def loginLibrarian(user: User.UserLogin):
     db = next(get_db())
     found_user = db.query(User.User).filter(User.User.email == user.email).first()
     if not found_user:
         raise HTTPException(status_code=404, detail="User not found")
+    
     if not AuthHelper.verify_password(user.password, found_user.password):
         raise HTTPException(status_code=401, detail="Invalid password")
+    
     if found_user.role != "librarian":
         raise HTTPException(status_code=403, detail="User is not a librarian")
         
@@ -54,7 +61,10 @@ def loginLibrarian(user: User.UserLogin):
         role=found_user.role
     )
     token = AuthHelper.create_token(token_data)
-    return token
+    token_str = token.access_token
+    response = JSONResponse(content={"message": "Login successful", "token": token_str})
+    response.set_cookie(key="token", value=token_str, httponly=False, samesite="lax")
+    return response
 
 
 def get_current_user(request: Request):

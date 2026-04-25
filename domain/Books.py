@@ -24,12 +24,12 @@ class BookCreate(pydantic.BaseModel):
     description: str
     author: str
     category: str
-    image: str
-    stock: int
+    image: str | None = None
+    stock: int 
     year: int
     language: str
     pages: int
-    isbn: str
+    isbn: str | None = None
 
 class BookUpdate(pydantic.BaseModel):
     title: str

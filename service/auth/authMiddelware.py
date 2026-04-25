@@ -10,20 +10,28 @@ import jwt
 
 class JWTMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        # 1. Get the Authorization header
+        token = None
         auth_header = request.headers.get("Authorization")
-        
-        # Define paths that don't require authentication
-        if request.url.path in ["/docs", "/openapi.json", "/login" , "/register" , "/loginLibrarian"]:
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+        else:
+            token = request.cookies.get("token")
+
+        path = request.url.path.rstrip("/").lower()
+        if not path:
+            path = "/"
+
+        excluded_paths = [p.lower() for p in ["/docs", "/openapi.json", "/login", "/register", "/loginLibrarian"]]
+
+        if request.method == "OPTIONS" or any(path.endswith(p) for p in excluded_paths):
             return await call_next(request)
 
-        if not auth_header or not auth_header.startswith("Bearer "):
+        if not token:
+            print(f"JWTMiddleware: returning 401 because token is {token}")
             return JSONResponse(
                 status_code=401, 
                 content={"detail": "Missing or invalid token"}
             )
-
-        token = auth_header.split(" ")[1]
 
         try:
             # 2. Decode the token
