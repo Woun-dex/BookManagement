@@ -98,7 +98,9 @@ def approve_borrowed(request: Request, id: int):
         book.stock -= 1
         borrowed.state = "borrowed"
         borrowed.borrow_date = datetime.now().strftime("%Y-%m-%d")
-        borrowed.return_date = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
+        # Only set return_date if it wasn't already specified in the original request
+        if not borrowed.return_date:
+            borrowed.return_date = (datetime.now() + timedelta(days=14)).strftime("%Y-%m-%d")
         
         db.merge(book)
         db.merge(borrowed)

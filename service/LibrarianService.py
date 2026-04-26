@@ -9,11 +9,13 @@ def get_all_borrowed(page : int , limit : int , sort_by : str , sort_order : str
         col = getattr(Borrowed.Borrowed, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
         
-        results = db.query(Borrowed.Borrowed, Books.Book.title, User.User.full_name, User.User.email).join(
+        query = db.query(Borrowed.Borrowed, Books.Book.title, User.User.full_name, User.User.email).join(
             Books.Book, Borrowed.Borrowed.book_id == Books.Book.id
         ).join(
             User.User, Borrowed.Borrowed.reader_id == User.User.id
-        ).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        )
+        total_count = query.count()
+        results = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
         
         formatted_results = []
         for borrowed, book_title, reader_name, reader_email in results:
@@ -23,7 +25,7 @@ def get_all_borrowed(page : int , limit : int , sort_by : str , sort_order : str
             borrowed_dict["reader_email"] = reader_email
             formatted_results.append(borrowed_dict)
             
-        return formatted_results
+        return {"items": formatted_results, "total_count": total_count}
 
 def get_borrowed(id : int):
     with get_db_session() as db:
@@ -33,9 +35,11 @@ def get_borrowed_by_reader(reader_id : int , page : int , limit : int , sort_by 
     with get_db_session() as db:
         col = getattr(Borrowed.Borrowed, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
-        results = db.query(Borrowed.Borrowed, Books.Book.title, Books.Book.author).join(
+        query = db.query(Borrowed.Borrowed, Books.Book.title, Books.Book.author).join(
             Books.Book, Borrowed.Borrowed.book_id == Books.Book.id
-        ).filter(Borrowed.Borrowed.reader_id == reader_id).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        ).filter(Borrowed.Borrowed.reader_id == reader_id)
+        total_count = query.count()
+        results = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
         
         formatted = []
         for borrowed, title, author in results:
@@ -43,16 +47,18 @@ def get_borrowed_by_reader(reader_id : int , page : int , limit : int , sort_by 
             d["book_name"] = title
             d["book_author"] = author
             formatted.append(d)
-        return formatted
+        return {"items": formatted, "total_count": total_count}
 
 def get_borrowed_by_librarian(librarian_id : int , page : int , limit : int , sort_by : str , sort_order : str):
     with get_db_session() as db:
         col = getattr(Borrowed.Borrowed, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
 
-        results = db.query(Borrowed.Borrowed, Books.Book, User.User).join(
+        query = db.query(Borrowed.Borrowed, Books.Book, User.User).join(
             Books.Book, Borrowed.Borrowed.book_id == Books.Book.id
-        ).join(User.User, Borrowed.Borrowed.reader_id == User.User.id).filter(Borrowed.Borrowed.librarian_id == librarian_id).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        ).join(User.User, Borrowed.Borrowed.reader_id == User.User.id).filter(Borrowed.Borrowed.librarian_id == librarian_id)
+        total_count = query.count()
+        results = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
         
         formatted_results = []
         for borrowed, book, user in results:
@@ -61,7 +67,7 @@ def get_borrowed_by_librarian(librarian_id : int , page : int , limit : int , so
             borrowed_dict["user"] = user.full_name
             formatted_results.append(borrowed_dict)
             
-        return formatted_results
+        return {"items": formatted_results, "total_count": total_count}
 
 def get_borrowed_by_book(book_id : int , page : int , limit : int , sort_by : str , sort_order : str):
     with get_db_session() as db:

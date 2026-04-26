@@ -7,7 +7,10 @@ def get_all_books(page: int, limit: int , sort_by: str , sort_order: str):
     with get_db_session() as db:
         col = getattr(Book.Book, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
-        return db.query(Book.Book).order_by(order_expr).offset((page - 1) * limit).limit(limit).all() 
+        query = db.query(Book.Book)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 def get_book(id: int):
     with get_db_session() as db:
@@ -17,35 +20,48 @@ def get_books_by_title(title: str , page : int , limit : int, sort_by: str, sort
     with get_db_session() as db:
         col = getattr(Book.Book, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
-        return db.query(Book.Book).filter(Book.Book.title == title).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        query = db.query(Book.Book).filter(Book.Book.title == title)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 def get_books_by_author(author: str , page : int , limit : int, sort_by: str, sort_order: str):
     with get_db_session() as db:
         col = getattr(Book.Book, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
-        return db.query(Book.Book).filter(Book.Book.author == author).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        query = db.query(Book.Book).filter(Book.Book.author == author)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 def get_books_by_category(category: str , page : int , limit : int, sort_by: str, sort_order: str):
     with get_db_session() as db:
         col = getattr(Book.Book, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
-        return db.query(Book.Book).filter(Book.Book.category == category).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        query = db.query(Book.Book).filter(Book.Book.category == category)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 def get_books_by_rate(rate: int, page : int , limit : int , sort_by: str, sort_order : str):
     with get_db_session() as db:
-        # Assuming sort_by is applicable to Book.Book.
-        # We filter by the provided rate value, but the current model might need adjusting.
         col = getattr(Book.Book, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
-        return db.query(Book.Book).join(BooksRate.BooksRate).filter(BooksRate.BooksRate.rate == rate).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        query = db.query(Book.Book).join(BooksRate.BooksRate).filter(BooksRate.BooksRate.rate == rate)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 def search_books(query: str, page: int = 1, limit: int = 10, sort_by: str = "id", sort_order: str = "asc"):
     with get_db_session() as db:
         col = getattr(Book.Book, sort_by)
         order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
-        return db.query(Book.Book).filter(
+        query_obj = db.query(Book.Book).filter(
             Book.Book.title.ilike(f"%{query}%") | Book.Book.author.ilike(f"%{query}%")
-        ).order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        )
+        total_count = query_obj.count()
+        books = query_obj.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 
 
