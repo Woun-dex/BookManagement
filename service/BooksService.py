@@ -1,56 +1,92 @@
 import domain.Books as Book
 import domain.BooksRate as BooksRate
-from config.dbConfig import get_db
+from config.dbConfig import get_db_session
 import service.LLMService as LLMService
 
 def get_all_books(page: int, limit: int , sort_by: str , sort_order: str):
-    db = next(get_db())
-    return db.query(Book.Book).offset((page - 1) * limit).limit(limit).order_by(getattr(Book.Book, sort_by), sort_order).all() 
+    with get_db_session() as db:
+        col = getattr(Book.Book, sort_by)
+        order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+        query = db.query(Book.Book)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 def get_book(id: int):
-    db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.id == id)
+    with get_db_session() as db:
+        return db.query(Book.Book).filter(Book.Book.id == id).first()
 
-def get_books_by_title(title: str , page : int , limit : int):
-    db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.title == title).offset((page - 1) * limit).limit(limit).all()
+def get_books_by_title(title: str , page : int , limit : int, sort_by: str, sort_order: str):
+    with get_db_session() as db:
+        col = getattr(Book.Book, sort_by)
+        order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+        query = db.query(Book.Book).filter(Book.Book.title == title)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
-def get_books_by_author(author: str , page : int , limit : int):
-    db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.author == author).offset((page - 1) * limit).limit(limit).all()
+def get_books_by_author(author: str , page : int , limit : int, sort_by: str, sort_order: str):
+    with get_db_session() as db:
+        col = getattr(Book.Book, sort_by)
+        order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+        query = db.query(Book.Book).filter(Book.Book.author == author)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
-def get_books_by_category(category: str , page : int , limit : int):
-    db = next(get_db())
-    return db.query(Book.Book).filter(Book.Book.category == category).offset((page - 1) * limit).limit(limit).all()
+def get_books_by_category(category: str , page : int , limit : int, sort_by: str, sort_order: str):
+    with get_db_session() as db:
+        col = getattr(Book.Book, sort_by)
+        order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+        query = db.query(Book.Book).filter(Book.Book.category == category)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
-def get_books_by_rate(page : int , limit : int , sort_order : str):
-    db = next(get_db())
-    return db.query(Book.Book).join(BooksRate.BooksRate).offset((page - 1) * limit).limit(limit).order_by(getattr(BooksRate.BooksRate, "rate"), sort_order).all()
+def get_books_by_rate(rate: int, page : int , limit : int , sort_by: str, sort_order : str):
+    with get_db_session() as db:
+        col = getattr(Book.Book, sort_by)
+        order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+        query = db.query(Book.Book).join(BooksRate.BooksRate).filter(BooksRate.BooksRate.rate == rate)
+        total_count = query.count()
+        books = query.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
+
+def search_books(query: str, page: int = 1, limit: int = 10, sort_by: str = "id", sort_order: str = "asc"):
+    with get_db_session() as db:
+        col = getattr(Book.Book, sort_by)
+        order_expr = col.desc() if sort_order.lower() == "desc" else col.asc()
+        query_obj = db.query(Book.Book).filter(
+            Book.Book.title.ilike(f"%{query}%") | Book.Book.author.ilike(f"%{query}%")
+        )
+        total_count = query_obj.count()
+        books = query_obj.order_by(order_expr).offset((page - 1) * limit).limit(limit).all()
+        return {"books": books, "total_count": total_count}
 
 
 
 def create_book(book: Book.BookCreate):
-    db = next(get_db())
-    new_book = Book.Book(**book.dict())
-    db.add(new_book)
-    db.commit()
-    db.refresh(new_book)
-    return new_book
+    with get_db_session() as db:
+        new_book = Book.Book(**book.dict())
+        db.add(new_book)
+        db.commit()
+        db.refresh(new_book)
+        return new_book
 
 def update_book(book: Book.BookUpdate):
-    db = next(get_db())
-    updated_book = Book.Book(**book.dict())
-    db.merge(updated_book)
-    db.commit()
-    return updated_book
+    with get_db_session() as db:
+        updated_book = Book.Book(**book.dict())
+        db.merge(updated_book)
+        db.commit()
+        return updated_book
 
 def delete_book(book: Book.BookDelete):
-    db = next(get_db())
-    book_to_delete = db.query(Book.Book).filter(Book.Book.id == book.id).first()
-    if book_to_delete:
-        db.delete(book_to_delete)
-        db.commit()
-    return book_to_delete
+    with get_db_session() as db:
+        book_to_delete = db.query(Book.Book).filter(Book.Book.id == book.id).first()
+        if book_to_delete:
+            db.delete(book_to_delete)
+            db.commit()
+        return book_to_delete
 
 def generate_book_brief(title: str, author: str, category: str):
     return LLMService.generate_book_brief(title, author, category)
